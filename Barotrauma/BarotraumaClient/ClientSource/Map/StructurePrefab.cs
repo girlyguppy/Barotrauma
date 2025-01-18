@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using Barotrauma.Extensions;
 
 namespace Barotrauma
 {
@@ -37,9 +38,22 @@ namespace Barotrauma
             else
             {
                 Vector2 placeSize = size;
-                if (ResizeHorizontal) placeSize.X = position.X - placePosition.X;
-                if (ResizeVertical) placeSize.Y = placePosition.Y - position.Y;
-
+                float placeRotation = 0f;
+                
+                if (GameMain.SubEditorScreen.RotateToolEnabled && ResizeHorizontal ^ ResizeVertical)
+                {
+                    if (ResizeHorizontal) { placeSize.X = Vector2.Distance(position, placePosition); }
+                    if (ResizeVertical) { placeSize.Y = Vector2.Distance(position, placePosition); }
+                    
+                    placeRotation = -MathUtils.VectorToAngle(position - placePosition);
+                    if (ResizeVertical) { placeRotation -= MathHelper.PiOver2; }
+                }
+                else
+                {
+                    if (ResizeHorizontal) placeSize.X = position.X - placePosition.X;
+                    if (ResizeVertical) placeSize.Y = placePosition.Y - position.Y;
+                }
+                
                 //don't allow resizing width/height to less than the grid size
                 if (ResizeHorizontal && Math.Abs(placeSize.X) < Submarine.GridSize.X)
                 {
@@ -50,13 +64,14 @@ namespace Barotrauma
                     placeSize.Y = Submarine.GridSize.Y;
                 }
 
-                newRect = Submarine.AbsRect(placePosition, placeSize);
+                newRect = Submarine.AbsRect(MathUtils.RotatePointAroundTarget(placePosition, placePosition - (ResizeVertical ? -placeSize : placeSize) / 2f, -placeRotation), placeSize);
                 if (PlayerInput.PrimaryMouseButtonReleased())
-                {                    
+                {
                     newRect.Location -= MathUtils.ToPoint(Submarine.MainSub.Position);
                     var structure = new Structure(newRect, this, Submarine.MainSub)
                     {
-                        Submarine = Submarine.MainSub
+                        Submarine = Submarine.MainSub,
+                        Rotation = MathHelper.ToDegrees(placeRotation)
                     };
                     
                     SubEditorScreen.StoreCommand(new AddOrDeleteCommand(new List<MapEntity> { structure }, false));
@@ -74,6 +89,7 @@ namespace Barotrauma
         {
             Vector2 position = Submarine.MouseToWorldGrid(cam, Submarine.MainSub);
             Rectangle newRect = new Rectangle((int)position.X, (int)position.Y, (int)ScaledSize.X, (int)ScaledSize.Y);
+            float placeRotation = 0f;
 
             if (placePosition == Vector2.Zero)
             {
@@ -83,13 +99,25 @@ namespace Barotrauma
             else
             {
                 Vector2 placeSize = ScaledSize;
-                if (ResizeHorizontal) placeSize.X = position.X - placePosition.X;
-                if (ResizeVertical) placeSize.Y = placePosition.Y - position.Y;
+
+                if (GameMain.SubEditorScreen.RotateToolEnabled && ResizeHorizontal ^ ResizeVertical)
+                {
+                    if (ResizeHorizontal) { placeSize.X = Vector2.Distance(position, placePosition); }
+                    if (ResizeVertical) { placeSize.Y = Vector2.Distance(position, placePosition); }
+                    
+                    placeRotation = -MathUtils.VectorToAngle(position - placePosition);
+                    if (ResizeVertical) { placeRotation -= MathHelper.PiOver2; }
+                }
+                else
+                {
+                    if (ResizeHorizontal) placeSize.X = position.X - placePosition.X;
+                    if (ResizeVertical) placeSize.Y = placePosition.Y - position.Y;
+                }
 
                 newRect = Submarine.AbsRect(placePosition, placeSize);
             }
 
-            Sprite.DrawTiled(spriteBatch, new Vector2(newRect.X, -newRect.Y), new Vector2(newRect.Width, newRect.Height), textureScale: TextureScale * Scale);
+            Sprite.DrawTiled(spriteBatch, new Vector2(newRect.X, -newRect.Y), new Vector2(newRect.Width, newRect.Height), placeRotation, textureScale: TextureScale * Scale);
             GUI.DrawRectangle(spriteBatch, new Rectangle(newRect.X - GameMain.GraphicsWidth, -newRect.Y, newRect.Width + GameMain.GraphicsWidth * 2, newRect.Height), Color.White);
             GUI.DrawRectangle(spriteBatch, new Rectangle(newRect.X, -newRect.Y - GameMain.GraphicsHeight, newRect.Width, newRect.Height + GameMain.GraphicsHeight * 2), Color.White);
         }

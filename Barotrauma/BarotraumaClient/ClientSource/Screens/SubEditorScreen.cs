@@ -41,6 +41,8 @@ namespace Barotrauma
         }
         
         private GUITickBox RotateToolToggle, ScaleToolToggle;
+        public bool RotateToolEnabled => RotateToolToggle.Selected;
+        public bool ScaleToolEnabled => ScaleToolToggle.Selected;
         
         private static Vector2 SelectionCenter
         {
