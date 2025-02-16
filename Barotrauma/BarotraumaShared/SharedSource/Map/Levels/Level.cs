@@ -5284,13 +5284,19 @@ namespace Barotrauma
             {
                 // Calculate the length and rotation based on edge endpoints.
                 float length = Vector2.Distance(edge.Point1, edge.Point2);
-                float rotation = MathUtils.VectorToAngle(edge.Point2 - edge.Point1); // [New: 22:45]
+                float rotationRad = MathUtils.VectorToAngle(edge.Point2 - edge.Point1); // [New: 22:45]
+
+                // Apply a 90-degree rotation offset if needed
+                if (structurePrefab.ResizeVertical)
+                {
+                    rotationRad += MathHelper.PiOver2; // [New: 22:45]
+                }
 
                 // Calculate the center of the edge.
                 Vector2 center = (edge.Point1 + edge.Point2) / 2f;
 
                 // Create a rectangle for the structure.
-                const int defaultHeight = 100; // Use a constant height
+                const int defaultHeight = 50; // Use a constant height
                 int rectX = (int)(center.X - length / 2);
                 int rectY = (int)(center.Y - defaultHeight / 2);
                 Rectangle structureRect = new Rectangle(new Point(rectX, rectY), new Point((int)length, defaultHeight));
@@ -5301,7 +5307,7 @@ namespace Barotrauma
                 // Instantiate the structure using the new constructor signature.
                 var structure = new Structure(structureRect, structurePrefab, targetSubmarine, uniqueId)
                 {
-                    Rotation = MathHelper.ToDegrees(rotation) // Set rotation [New: 22:45]
+                    Rotation = MathHelper.ToDegrees(rotationRad) // Set rotation [New: 22:45]
                 };
 
                 // Optionally adjust if the structure is horizontally resizable.
