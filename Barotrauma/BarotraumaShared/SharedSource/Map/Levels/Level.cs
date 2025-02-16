@@ -5206,10 +5206,10 @@ namespace Barotrauma
         }
     }
 
-        partial class Level : Entity, IServerSerializable
-        {
-            // ... existing Level class code ...
-    
+    partial class Level : Entity, IServerSerializable
+    {
+        // ... existing Level class code ...
+
         public IEnumerable<VoronoiCell> GetCells()
         {
             return cells;
@@ -5221,8 +5221,6 @@ namespace Barotrauma
             private readonly List<GraphEdge> levelEdges;
             private readonly Submarine targetSubmarine;
             private readonly StructurePrefab structurePrefab;
-            private ushort nextFreeId;
-
 
             public LevelToStructureConverter(Level level, StructurePrefab structurePrefab)
             {
@@ -5240,26 +5238,6 @@ namespace Barotrauma
                 this.targetSubmarine = new Submarine(defaultSubInfo, false, s => new List<MapEntity>(), IdRemap.DiscardId);
 
                 this.structurePrefab = structurePrefab;
-            
-                // Initialize nextFreeId
-                InitializeNextFreeId();
-            }
-
-            private void InitializeNextFreeId()
-            {
-                nextFreeId = 1;
-                foreach (var entity in Entity.GetEntities())
-                {
-                    if (entity.ID >= nextFreeId)
-                    {
-                        nextFreeId = (ushort)(entity.ID + 1);
-                    }
-                }
-            }
-
-            private ushort GetNextFreeId()
-            {
-                return nextFreeId++;
             }
 
             public void ConvertToSubmarine()
@@ -5285,6 +5263,7 @@ namespace Barotrauma
                 {
                     ConvertEdgeToStructure(edge);
                 }
+
 #if CLIENT
                 // Open the submarine editor using the updated API.
                 GameMain.SubEditorScreen.LoadSubmarine(targetSubmarine);
@@ -5310,7 +5289,7 @@ namespace Barotrauma
                 Rectangle structureRect = new Rectangle(new Point(rectX, rectY), new Point((int)length, defaultHeight));
 
                 // Generate a unique ID for the structure.
-                ushort uniqueId = GetNextFreeId();
+                ushort uniqueId = EntityHelper.GetUniqueID(targetSubmarine);
 
                 // Instantiate the structure using the new constructor signature.
                 var structure = new Structure(structureRect, structurePrefab, targetSubmarine, uniqueId);
