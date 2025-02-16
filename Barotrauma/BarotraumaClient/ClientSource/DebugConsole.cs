@@ -1,4 +1,5 @@
-﻿using Barotrauma.ClientSource.Settings;
+﻿using Barotrauma; // Add this line
+using Barotrauma.ClientSource.Settings;
 using Barotrauma.Extensions;
 using Barotrauma.IO;
 using Barotrauma.Items.Components;
@@ -397,6 +398,31 @@ namespace Barotrauma
 
         private static void InitProjectSpecific()
         {
+            commands.Add(new Command("convertleveltostructures", 
+                "convertleveltostructures [structureIdentifier]: Converts the current level terrain into editable structures. " + 
+                "Default structure is 'ff_x_wall' if not specified.", (string[] args) =>
+            {
+                if (GameMain.GameSession?.Level == null) 
+                {
+                    ThrowError("No level loaded!");
+                    return;
+                }
+
+                string structureId = args.Length > 0 ? args[0] : "ff_x_wall";
+                var structurePrefab = StructurePrefab.Find(null, structureId) as StructurePrefab;
+
+                if (structurePrefab == null)
+                {
+                    ThrowError($"Could not find structure prefab with identifier '{structureId}'");
+                    return;
+                }
+
+                var converter = new Level.LevelToStructureConverter(GameMain.GameSession.Level, structurePrefab);
+                converter.ConvertToSubmarine();
+                NewMessage("Level converted to structures. Use 'subeditor' command to edit.", Color.Green);
+
+            }, isCheat: true));
+
             commands.Add(new Command("eosStat", "Query and display all logged in EOS users. Normally this is at most two users, but in a developer environment it could be more.", args =>
             {
                 if (!EosInterface.Core.IsInitialized)
@@ -3781,7 +3807,7 @@ namespace Barotrauma
                 }
                 
             }, isCheat: true));
-
+           
             commands.Add(new Command("reloadsprite|reloadsprites", "Reloads the sprites of the selected item(s)/structure(s) (hovering over or selecting in the subeditor) or the controlled character. Can also reload sprites by entity id or by the name attribute (sprite element). Example 1: reloadsprite id itemid. Example 2: reloadsprite name \"Sprite name\"", args =>
             {
                 if (Screen.Selected is SpriteEditorScreen)

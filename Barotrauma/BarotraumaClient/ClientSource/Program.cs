@@ -57,9 +57,20 @@ namespace Barotrauma
                 log: DebugConsole.Log);
             StoreIntegration.Init(ref args);
             EnableNvOptimus();
-            Game = new GameMain(args);
-            Game.Run();
-            Game.Dispose();
+            AppDomain.CurrentDomain.UnhandledException += CrashHandler;
+            try
+            {
+                Game = new GameMain(args);
+                Game.Run();
+            }
+            catch (Exception e)
+            {
+                CrashHandler(null, new UnhandledExceptionEventArgs(e, true));
+            }
+            finally
+            {
+                Game?.Dispose();
+            }
             FreeNvOptimus();
 
             CrossThread.ProcessTasks();
@@ -73,8 +84,10 @@ namespace Barotrauma
             try
             {
                 Game?.Exit();
-                CrashDump(Game, "crashreport.log", unhandledException);
+                string crashReportPath = "crashreport.log";
+                GenerateCrashReport(crashReportPath, unhandledException);
                 Game?.Dispose();
+                ShowCrashMessageBox(crashReportPath);
             }
             catch (Exception exceptionHandlerError)
             {
@@ -348,6 +361,44 @@ namespace Barotrauma
         {
 #warning TODO: determine if we can do this safely
             //NativeLibrary.Free(nvApi64Dll);
+        }
+
+        private static void GenerateCrashReport(string filePath, Exception exception)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Barotrauma Client crash report (generated on " + DateTime.Now + ")");
+            sb.AppendLine();
+            sb.AppendLine("Barotrauma seems to have crashed. Sorry for the inconvenience!");
+            sb.AppendLine();
+            sb.AppendLine("Exception: " + exception.Message);
+            sb.AppendLine("Target site: " + exception.TargetSite);
+            sb.AppendLine("Stack trace: ");
+            sb.AppendLine(exception.StackTrace);
+
+            if (exception.InnerException != null)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Inner exception: " + exception.InnerException.Message);
+                sb.AppendLine("Target site: " + exception.InnerException.TargetSite);
+                sb.AppendLine("Stack trace: ");
+                sb.AppendLine(exception.InnerException.StackTrace);
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("Last debug messages:");
+            for (int i = DebugConsole.Messages.Count - 1; i >= 0; i--)
+            {
+                sb.AppendLine("[" + DebugConsole.Messages[i].Time + "] " + DebugConsole.Messages[i].Text);
+            }
+
+            File.WriteAllText(filePath, sb.ToString());
+        }
+
+        private static void ShowCrashMessageBox(string filePath)
+        {
+            string message = "Barotrauma has crashed. A crash report has been saved to " + filePath + ".";
+            Microsoft.Xna.Framework.MessageBox.ShowWrapped(Microsoft.Xna.Framework.MessageBox.Flags.Error, "Oops! Barotrauma just crashed.", message);
+            ToolBox.OpenFileWithShell(filePath);
         }
         
     }

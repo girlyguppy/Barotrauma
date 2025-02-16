@@ -25,6 +25,17 @@ namespace Barotrauma
     {
         public SubmarineInfo Info { get; private set; }
 
+    public void AddEntity(MapEntity entity)
+    {
+        // Add the entity to the submarine's entity list or perform necessary actions
+        // Example implementation:
+            if (entity != null)
+            {
+             entity.Submarine = this;
+                MapEntity.MapEntityList.Add(entity);
+            }
+    }
+
         public CharacterTeamType TeamID = CharacterTeamType.None;
 
         public static ImmutableArray<SubItemSwapPerk> GetSubItemSwapPerksFromTeamPerks(ImmutableArray<DisembarkPerkPrefab> teamPerks)

@@ -23,6 +23,52 @@ namespace Barotrauma
         public const int MaxLights = 600;
         public const int MaxShadowCastingLights = 100;
 
+        public void LoadSubmarine(Submarine sub)
+        {
+            if (sub == null) { return; }
+
+            // Set the main submarine to the provided submarine
+            MainSub = sub;
+
+            // Update the camera position to focus on the submarine
+            cam.Position = sub.Position + sub.HiddenSubPosition;
+
+            // Refresh the UI elements to reflect the loaded submarine
+            subNameLabel.Text = ToolBox.LimitString(sub.Info.Name, subNameLabel.Font, subNameLabel.Rect.Width);
+
+            // Update the entity list to show the entities of the loaded submarine
+            UpdateEntityList();
+
+            // Update the layer panel to reflect the layers of the loaded submarine
+            UpdateLayerPanel();
+
+            // Reconstruct the layers of the loaded submarine
+            ReconstructLayers();
+
+            // Update the camera transform
+            cam.UpdateTransform();
+
+            // Create a dummy character for interacting with the submarine
+            CreateDummyCharacter();
+
+            // Set the mode to default
+            SetMode(Mode.Default);
+
+            // Update the submarine's transform
+            sub.UpdateTransform(interpolate: false);
+
+            // Update the submarine's visibility based on the layers
+            foreach ((string layerName, LayerData layerData) in Layers)
+            {
+                Identifier identifier = layerName.ToIdentifier();
+                bool enabled = layerData.IsVisible;
+                sub.SetLayerEnabled(identifier, enabled);
+            }
+
+            // Log the loading of the submarine
+            DebugConsole.NewMessage($"Loaded submarine: {sub.Info.Name}", Color.Green);
+        }
+
         private static Submarine MainSub
         {
             get => Submarine.MainSub;

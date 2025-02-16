@@ -1,4 +1,5 @@
-﻿using Barotrauma.Extensions;
+﻿using Barotrauma; // Add this line
+using Barotrauma.Extensions;
 using Barotrauma.Items.Components;
 using Barotrauma.Networking;
 using Microsoft.Xna.Framework;

@@ -15,6 +15,32 @@ using Voronoi2;
 
 namespace Barotrauma
 {
+    static class PositionTypeExtensions
+    {
+        /// <summary>
+        /// Caves, ruins, outposts and similar enclosed areas
+        /// </summary>
+        public static bool IsEnclosedArea(this Level.PositionType positionType)
+        {
+            return
+                 positionType == Level.PositionType.Cave ||
+                 positionType == Level.PositionType.AbyssCave ||
+                 positionType.IsIndoorsArea();
+        }
+
+        /// <summary>
+        /// Area inside a submarine (outpost, wreck, beacon station)
+        /// </summary>
+        public static bool IsIndoorsArea(this Level.PositionType positionType)
+        {
+            return
+                 positionType == Level.PositionType.Outpost ||
+                 positionType == Level.PositionType.BeaconStation ||
+                 positionType == Level.PositionType.Ruin ||
+                 positionType == Level.PositionType.Wreck;
+        }
+    }
+
     partial class Level : Entity, IServerSerializable
     {
         public enum PlacementType
@@ -5171,29 +5197,99 @@ namespace Barotrauma
         }
     }
 
-    static class PositionTypeExtensions
+    partial class Level : Entity, IServerSerializable
     {
-        /// <summary>
-        /// Caves, ruins, outposts and similar enclosed areas
-        /// </summary>
-        public static bool IsEnclosedArea(this Level.PositionType positionType)
+        // ... existing Level class code ...
+
+        public IEnumerable<VoronoiCell> GetCells()
         {
-            return
-                 positionType == Level.PositionType.Cave ||
-                 positionType == Level.PositionType.AbyssCave ||
-                 positionType.IsIndoorsArea();
+            return cells;
         }
 
-        /// <summary>
-        /// Area inside a submarine (outpost, wreck, beacon station)
-        /// </summary>
-        public static bool IsIndoorsArea(this Level.PositionType positionType)
+        internal class LevelToStructureConverter
         {
-            return
-                 positionType == Level.PositionType.Outpost ||
-                 positionType == Level.PositionType.BeaconStation ||
-                 positionType == Level.PositionType.Ruin ||
-                 positionType == Level.PositionType.Wreck;
+            private readonly Level level;
+            private readonly List<GraphEdge> levelEdges;
+            private readonly Submarine targetSubmarine;
+            private readonly StructurePrefab structurePrefab;
+
+            public LevelToStructureConverter(Level level, StructurePrefab structurePrefab)
+            {
+                this.level = level;
+                this.levelEdges = new List<GraphEdge>();
+
+                // Obtain a default SubmarineInfo from saved submarines (adjust as needed)
+                var defaultSubInfo = SubmarineInfo.SavedSubmarines.FirstOrDefault();
+                if (defaultSubInfo == null)
+                {
+                    throw new InvalidOperationException("No valid SubmarineInfo available!");
+                }
+                // Create the submarine with the required parameters:
+                // Submarine(SubmarineInfo info, bool showErrorMessages, Func<Submarine, List<MapEntity>> loadEntities, IdRemap linkedRemap)
+                this.targetSubmarine = new Submarine(defaultSubInfo, false, s => new List<MapEntity>(), IdRemap.DiscardId);
+
+                this.structurePrefab = structurePrefab;
+            }
+
+            public void ConvertToSubmarine()
+            {
+                DebugConsole.NewMessage("Starting conversion to submarine...");
+
+                // Use a helper method to access the level's cells.
+                foreach (var cell in level.GetCells())
+                {
+                    foreach (var edge in cell.Edges)
+                    {
+                        if (edge.IsSolid && !edge.OutsideLevel)
+                        {
+                            levelEdges.Add(edge);
+                        }
+                    }
+                }
+
+                DebugConsole.NewMessage($"Total edges to convert: {levelEdges.Count}");
+
+                // Convert each edge to a structure.
+                foreach (var edge in levelEdges)
+                {
+                    ConvertEdgeToStructure(edge);
+                }
+#if CLIENT
+                // Open the submarine editor using the updated API.
+                GameMain.SubEditorScreen.LoadSubmarine(targetSubmarine);
+            }
+#else
+                // Server-side logic: Log a message indicating the conversion is complete.
+                DebugConsole.NewMessage("Level converted to structures on the server side.");
+            }
+#endif
+            private void ConvertEdgeToStructure(GraphEdge edge)
+            {
+                // Calculate the length and rotation based on edge endpoints.
+                float length = Vector2.Distance(edge.Point1, edge.Point2);
+                float rotation = (float)Math.Atan2(edge.Point2.Y - edge.Point1.Y, edge.Point2.X - edge.Point1.X);
+
+                // Calculate the center of the edge.
+                Vector2 center = (edge.Point1 + edge.Point2) / 2f;
+
+                // Create a rectangle for the structure.
+                const int defaultHeight = 100; // Use a constant height
+                int rectX = (int)(center.X - length / 2);
+                int rectY = (int)(center.Y - defaultHeight / 2);
+                Rectangle structureRect = new Rectangle(new Point(rectX, rectY), new Point((int)length, defaultHeight));
+
+                // Instantiate the structure using the new constructor signature.
+                var structure = new Structure(structureRect, structurePrefab, targetSubmarine, (ushort)rotation);
+
+                // Optionally adjust if the structure is horizontally resizable.
+                if (structure.ResizeHorizontal)
+                {
+                    structure.Rect = new Rectangle(structure.Rect.Location, new Point((int)length, structure.Rect.Height));
+                }
+
+                // Add the structure via the submarine's entity manager.
+                targetSubmarine.AddEntity(structure);
+            }
         }
     }
 }
