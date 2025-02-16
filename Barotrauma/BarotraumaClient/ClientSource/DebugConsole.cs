@@ -398,6 +398,7 @@ namespace Barotrauma
 
         private static void InitProjectSpecific()
         {
+
             commands.Add(new Command("convertleveltostructures", 
                 "convertleveltostructures [structureIdentifier]: Converts the current level terrain into editable structures. " + 
                 "Default structure is 'ff_x_wall' if not specified.", (string[] args) =>
