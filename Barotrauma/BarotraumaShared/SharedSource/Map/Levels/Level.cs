@@ -15,6 +15,15 @@ using Voronoi2;
 
 namespace Barotrauma
 {
+    internal class EntityHelper : Entity
+    {
+        public EntityHelper(Submarine submarine) : base(submarine, NullEntityID) { }
+
+        public static ushort GetUniqueID(Submarine submarine)
+        {
+            return new EntityHelper(submarine).DetermineID(NullEntityID, submarine);
+        }
+    }
     static class PositionTypeExtensions
     {
         /// <summary>
@@ -5197,10 +5206,10 @@ namespace Barotrauma
         }
     }
 
-    partial class Level : Entity, IServerSerializable
-    {
-        // ... existing Level class code ...
-
+        partial class Level : Entity, IServerSerializable
+        {
+            // ... existing Level class code ...
+    
         public IEnumerable<VoronoiCell> GetCells()
         {
             return cells;
@@ -5212,6 +5221,8 @@ namespace Barotrauma
             private readonly List<GraphEdge> levelEdges;
             private readonly Submarine targetSubmarine;
             private readonly StructurePrefab structurePrefab;
+            private ushort nextFreeId;
+
 
             public LevelToStructureConverter(Level level, StructurePrefab structurePrefab)
             {
@@ -5229,6 +5240,26 @@ namespace Barotrauma
                 this.targetSubmarine = new Submarine(defaultSubInfo, false, s => new List<MapEntity>(), IdRemap.DiscardId);
 
                 this.structurePrefab = structurePrefab;
+            
+                // Initialize nextFreeId
+                InitializeNextFreeId();
+            }
+
+            private void InitializeNextFreeId()
+            {
+                nextFreeId = 1;
+                foreach (var entity in Entity.GetEntities())
+                {
+                    if (entity.ID >= nextFreeId)
+                    {
+                        nextFreeId = (ushort)(entity.ID + 1);
+                    }
+                }
+            }
+
+            private ushort GetNextFreeId()
+            {
+                return nextFreeId++;
             }
 
             public void ConvertToSubmarine()
@@ -5278,8 +5309,11 @@ namespace Barotrauma
                 int rectY = (int)(center.Y - defaultHeight / 2);
                 Rectangle structureRect = new Rectangle(new Point(rectX, rectY), new Point((int)length, defaultHeight));
 
+                // Generate a unique ID for the structure.
+                ushort uniqueId = GetNextFreeId();
+
                 // Instantiate the structure using the new constructor signature.
-                var structure = new Structure(structureRect, structurePrefab, targetSubmarine, (ushort)rotation);
+                var structure = new Structure(structureRect, structurePrefab, targetSubmarine, uniqueId);
 
                 // Optionally adjust if the structure is horizontally resizable.
                 if (structure.ResizeHorizontal)
