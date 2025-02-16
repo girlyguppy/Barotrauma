@@ -5296,10 +5296,12 @@ namespace Barotrauma
                 Vector2 center = (edge.Point1 + edge.Point2) / 2f;
 
                 // Create a rectangle for the structure.
-                const int defaultHeight = 50; // Use a constant height
+                const int defaultHeight = 48; // Use a constant height
                 int rectX = (int)(center.X - length / 2);
-                int rectY = (int)(center.Y - defaultHeight / 2);
+                int rectY = (int)(center.Y + defaultHeight / 2); // Adjusted calculation
+
                 Rectangle structureRect = new Rectangle(new Point(rectX, rectY), new Point((int)length, defaultHeight));
+
 
                 // Generate a unique ID for the structure.
                 ushort uniqueId = EntityHelper.GetUniqueID(targetSubmarine);
@@ -5307,7 +5309,7 @@ namespace Barotrauma
                 // Instantiate the structure using the new constructor signature.
                 var structure = new Structure(structureRect, structurePrefab, targetSubmarine, uniqueId)
                 {
-                    Rotation = MathHelper.ToDegrees(rotationRad) // Set rotation [New: 22:45]
+                    Rotation = -MathHelper.ToDegrees(rotationRad) // Set rotation [New: 22:45]
                 };
 
                 // Optionally adjust if the structure is horizontally resizable.
