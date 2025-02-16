@@ -5205,7 +5205,6 @@ namespace Barotrauma
             Loaded = null;
         }
     }
-
     partial class Level : Entity, IServerSerializable
     {
         // ... existing Level class code ...
@@ -5258,26 +5257,34 @@ namespace Barotrauma
 
                 DebugConsole.NewMessage($"Total edges to convert: {levelEdges.Count}");
 
-                // Convert each edge to a structure.
+                // Start coroutine to convert edges with delay
+                CoroutineManager.StartCoroutine(ConvertEdgesWithDelay()); // [New: 22:45]
+            }
+
+            // Coroutine to convert edges with delay
+            private IEnumerable<CoroutineStatus> ConvertEdgesWithDelay() // [New: 22:45]
+            {
                 foreach (var edge in levelEdges)
                 {
                     ConvertEdgeToStructure(edge);
+                    yield return new WaitForSeconds(0.01f); // 10ms delay [New: 22:45]
                 }
 
 #if CLIENT
                 // Open the submarine editor using the updated API.
                 GameMain.SubEditorScreen.LoadSubmarine(targetSubmarine);
-            }
 #else
                 // Server-side logic: Log a message indicating the conversion is complete.
                 DebugConsole.NewMessage("Level converted to structures on the server side.");
-            }
 #endif
+                yield return CoroutineStatus.Success; // [New: 22:45]
+            }
+
             private void ConvertEdgeToStructure(GraphEdge edge)
             {
                 // Calculate the length and rotation based on edge endpoints.
                 float length = Vector2.Distance(edge.Point1, edge.Point2);
-                float rotation = (float)Math.Atan2(edge.Point2.Y - edge.Point1.Y, edge.Point2.X - edge.Point1.X);
+                float rotation = MathUtils.VectorToAngle(edge.Point2 - edge.Point1); // [New: 22:45]
 
                 // Calculate the center of the edge.
                 Vector2 center = (edge.Point1 + edge.Point2) / 2f;
@@ -5292,7 +5299,10 @@ namespace Barotrauma
                 ushort uniqueId = EntityHelper.GetUniqueID(targetSubmarine);
 
                 // Instantiate the structure using the new constructor signature.
-                var structure = new Structure(structureRect, structurePrefab, targetSubmarine, uniqueId);
+                var structure = new Structure(structureRect, structurePrefab, targetSubmarine, uniqueId)
+                {
+                    Rotation = MathHelper.ToDegrees(rotation) // Set rotation [New: 22:45]
+                };
 
                 // Optionally adjust if the structure is horizontally resizable.
                 if (structure.ResizeHorizontal)
